@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import { Instagram, Music, MessageSquare, Facebook, Music2, X } from "lucide-react"; 
+import { Music, MessageSquare } from "lucide-react"; 
 import { providerInfo } from "../data";
 
 // Fallback queue in case no real data arrives
@@ -130,12 +130,20 @@ export default function ScreenPage() {
   // Determine Icon based on platform
   const getIcon = (platform: string) => {
       switch(platform) {
-          case 'instagram': return <Instagram className="w-12 h-12 text-white" />;
-          case 'facebook': return <Facebook className="w-12 h-12 text-white" />;
-          case 'twitter': return <X className="w-12 h-12 text-white" />;
-          case 'tiktok': return <Music2 className="w-12 h-12 text-white" />;
-          case 'guest': return <MessageSquare className="w-12 h-12 text-white" />;
-          default: return <Music className="w-12 h-12 text-white" />;
+          case 'instagram': 
+              return <Image src="https://m.pubcastplus.com/images/social/instagram.svg" alt="Instagram" width={48} height={48} className="w-12 h-12" unoptimized />;
+          case 'facebook': 
+              return <Image src="https://m.pubcastplus.com/images/social/facebook.svg" alt="Facebook" width={48} height={48} className="w-12 h-12" unoptimized />;
+          case 'twitter': 
+              return <Image src="https://m.pubcastplus.com/images/social/twitter.png" alt="Twitter" width={48} height={48} className="w-12 h-12" unoptimized />;
+          case 'tiktok': 
+              return <Image src="https://m.pubcastplus.com/images/social/tiktok.svg?v=4" alt="TikTok" width={48} height={48} className="w-12 h-12" unoptimized />;
+          case 'onlyfans':
+              return <Image src="https://m.pubcastplus.com/images/social/onlyfans.svg" alt="OnlyFans" width={48} height={48} className="w-12 h-12" unoptimized />;
+          case 'guest': 
+              return <MessageSquare className="w-12 h-12 text-white" />;
+          default: 
+              return <Music className="w-12 h-12 text-white" />;
       }
   };
 
