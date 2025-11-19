@@ -155,16 +155,8 @@ export default function ScreenPage() {
   const hasMessage = currentItem?.message && currentItem.message.trim();
   const shouldShow = show && currentItem && !isDefaultMessage && (hasImage || hasMessage);
 
-  // Don't render until mounted to avoid hydration issues
-  if (!isMounted) {
-    return (
-      <main className="w-screen h-screen bg-black overflow-hidden flex items-center justify-center font-sans">
-      </main>
-    );
-  }
-
   return (
-    <main className="w-screen h-screen bg-black overflow-hidden flex items-center justify-center font-sans">
+    <main className="w-screen h-screen bg-black overflow-hidden flex items-center justify-center font-sans" suppressHydrationWarning>
       {/* Background Context - Only show when content is visible */}
       {shouldShow && (
         <div className="absolute inset-0 overflow-hidden">

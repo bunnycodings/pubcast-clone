@@ -328,7 +328,23 @@ export default function PostPage() {
                 <h3 className="text-lg font-bold mb-3">ชื่อวาร์ปของคุณ</h3>
                 <div className="flex gap-3 mb-3">
                   {platforms.map((platform) => {
-                    const Icon = platform.icon;
+                    const getPlatformIcon = () => {
+                      switch(platform.id) {
+                        case 'instagram':
+                          return <img src="https://m.pubcastplus.com/images/social/instagram.svg" alt="Instagram" width={24} height={24} className="w-6 h-6" />;
+                        case 'facebook':
+                          return <img src="https://m.pubcastplus.com/images/social/facebook.svg" alt="Facebook" width={24} height={24} className="w-6 h-6" />;
+                        case 'twitter':
+                          return <img src="https://m.pubcastplus.com/images/social/twitter.png" alt="Twitter" width={24} height={24} className="w-6 h-6" />;
+                        case 'tiktok':
+                          return <img src="https://m.pubcastplus.com/images/social/tiktok.svg?v=4" alt="TikTok" width={24} height={24} className="w-6 h-6" />;
+                        case 'guest':
+                          return <MessageSquare className="w-6 h-6 text-white" />;
+                        default:
+                          return <MessageSquare className="w-6 h-6 text-white" />;
+                      }
+                    };
+                    
                     return (
                       <button
                         key={platform.id}
@@ -339,7 +355,7 @@ export default function PostPage() {
                             : 'bg-gray-700 border-2 border-transparent'
                         }`}
                       >
-                        <Icon className="w-6 h-6 text-white" />
+                        {getPlatformIcon()}
                       </button>
                     );
                   })}
