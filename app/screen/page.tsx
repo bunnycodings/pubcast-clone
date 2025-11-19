@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import { Music, MessageSquare } from "lucide-react"; 
 import { providerInfo } from "../data";
 
 // Fallback queue in case no real data arrives
@@ -128,12 +127,20 @@ export default function ScreenPage() {
   }, [processNextItem, isMounted]);
 
   // Determine Icon based on platform - use img tags for external URLs to avoid hydration issues
-  const getIcon = (platform: string) => {
-      if (!platform || !isMounted) {
+  const getIcon = (platform: string | undefined) => {
+      if (!isMounted) {
+          return <div className="w-12 h-12"></div>; // Empty div while mounting
+      }
+      
+      if (!platform) {
+          console.log("No platform provided, using default chat icon");
           return <img src="https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" alt="Default" width={48} height={48} className="w-12 h-12" />;
       }
       
-      switch(platform) {
+      const platformLower = platform.toLowerCase().trim();
+      console.log("Platform received:", platform, "Normalized:", platformLower);
+      
+      switch(platformLower) {
           case 'instagram': 
               return <img src="https://m.pubcastplus.com/images/social/instagram.svg" alt="Instagram" width={48} height={48} className="w-12 h-12" loading="lazy" />;
           case 'facebook': 
@@ -147,6 +154,7 @@ export default function ScreenPage() {
           case 'guest': 
               return <img src="https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" alt="Guest" width={48} height={48} className="w-12 h-12" />;
           default: 
+              console.log("Unknown platform, using default chat icon:", platformLower);
               return <img src="https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" alt="Default" width={48} height={48} className="w-12 h-12" />;
       }
   };
@@ -202,7 +210,7 @@ export default function ScreenPage() {
               {/* Platform Icon & User */}
               <div className="flex flex-col items-center justify-center pt-12 pb-6 z-10">
                   <div className="w-20 h-20 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg mb-4">
-                      {isMounted && getIcon(currentItem.platform)}
+                      {getIcon(currentItem?.platform || '')}
                   </div>
                   <h2 className="text-4xl font-bold drop-shadow-sm text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
                       {currentItem.user ? (typeof currentItem.user === 'string' ? currentItem.user.replace(/\d+\s*(วินาที|second|seconds)/gi, '').trim() : currentItem.user) : ''}
