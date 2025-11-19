@@ -109,6 +109,11 @@ export default function ScreenPage() {
       }
   };
 
+  // Determine if we should show text overlay on image
+  const showTextOverlay = currentItem.mediaUrl && currentItem.message && currentItem.showText !== false;
+  const isImageOnly = currentItem.mediaUrl && (!currentItem.message || currentItem.showText === false);
+  const isTextOnly = !currentItem.mediaUrl && currentItem.message;
+
   return (
     <main className="w-screen h-screen bg-black overflow-hidden flex items-center justify-center font-sans">
       {/* Background Context */}
@@ -123,77 +128,60 @@ export default function ScreenPage() {
       </div>
       
       {/* Main Content Container */}
-      <div className={`relative z-10 flex w-full max-w-7xl h-[80vh] transition-all duration-500 transform ${show ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+      <div className={`relative z-10 w-full h-full transition-all duration-500 transform ${show ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
         
-        {/* Left Side: Media Content */}
-        <div className="flex-1 bg-black/40 backdrop-blur-sm border-2 border-purple-500/30 rounded-l-3xl overflow-hidden relative flex items-center justify-center">
-            {currentItem.mediaUrl ? (
-                <div className="relative w-full h-full p-4">
-                    <Image 
-                        src={currentItem.mediaUrl} 
-                        alt="User Content" 
-                        fill 
-                        className="object-contain rounded-xl shadow-[0_0_30px_rgba(168,85,247,0.4)]"
-                        unoptimized
-                    />
-                </div>
-            ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                    <Music className="w-32 h-32 text-purple-500 animate-pulse" />
-                </div>
-            )}
-            
-            {/* Corner Decoration */}
-            <div className="absolute top-0 left-0 w-32 h-32 border-t-4 border-l-4 border-purple-500 rounded-tl-3xl z-20"></div>
-            <div className="absolute bottom-0 right-0 w-32 h-32 border-b-4 border-r-4 border-blue-500 rounded-br-3xl z-20"></div>
-        </div>
+        {/* Image Only Display */}
+        {isImageOnly && (
+          <div className="relative w-full h-full flex items-center justify-center">
+            <Image 
+              src={currentItem.mediaUrl} 
+              alt="User Content" 
+              fill
+              className="object-contain"
+              unoptimized
+            />
+          </div>
+        )}
 
-        {/* Right Side: Message & User Info */}
-        <div className="w-[40%] bg-gradient-to-br from-[#1a1a2e] to-[#16213e] border-y-2 border-r-2 border-blue-500/30 rounded-r-3xl flex flex-col relative overflow-hidden">
-            
-            {/* Platform Icon & User */}
-            <div className="flex flex-col items-center justify-center pt-12 pb-6 z-10">
-                <div className="w-20 h-20 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg mb-4">
-                    {getIcon(currentItem.platform)}
-                </div>
-                <h2 className={`text-4xl font-bold drop-shadow-sm ${
-                    currentItem.platform === "system" 
-                        ? "text-black" 
-                        : "text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600"
-                }`}>
-                    {currentItem.user}
-                </h2>
+        {/* Text Only Display */}
+        {isTextOnly && (
+          <div className="w-full h-full flex flex-col items-center justify-center px-8">
+            <p className={`text-6xl md:text-7xl font-bold text-center leading-tight break-words ${
+              currentItem.platform === "system" 
+                ? "text-black" 
+                : "text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]"
+            }`}>
+              {currentItem.message}
+            </p>
+          </div>
+        )}
+
+        {/* Image with Text Overlay */}
+        {showTextOverlay && (
+          <div className="relative w-full h-full flex items-center justify-center">
+            <Image 
+              src={currentItem.mediaUrl} 
+              alt="User Content" 
+              fill
+              className="object-contain"
+              unoptimized
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              <p className="text-5xl md:text-6xl font-bold text-center text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] break-words px-8">
+                {currentItem.message}
+              </p>
             </div>
+          </div>
+        )}
 
-            {/* Message Area */}
-            <div className="flex-1 px-8 flex items-center justify-center z-10 overflow-hidden">
-                <p className={`text-4xl md:text-5xl font-bold text-center leading-tight break-words w-full max-h-full overflow-y-auto ${
-                    currentItem.platform === "system" 
-                        ? "text-black" 
-                        : "text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]"
-                }`}>
-                    {currentItem.message}
-                </p>
-            </div>
-
-            {/* Venue Logo at Bottom */}
-            <div className="h-24 bg-black/30 flex items-center justify-center gap-3 mt-auto border-t border-white/10 z-10">
-                <div className="w-10 h-10 rounded-full overflow-hidden border border-[#D4AF37]">
-                     <Image
-                        src={providerInfo.logo}
-                        alt="Logo"
-                        width={40}
-                        height={40}
-                        unoptimized
-                        className="object-cover"
-                     />
-                </div>
-                <span className="text-xl font-bold text-[#D4AF37] tracking-wider uppercase">{providerInfo.name}</span>
-            </div>
-
-            {/* Animated Background Elements for the Card */}
-            <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-br from-purple-500/10 via-transparent to-blue-500/10 animate-spin-slow pointer-events-none"></div>
-        </div>
+        {/* Default/System Message */}
+        {currentItem.platform === "system" && !currentItem.mediaUrl && (
+          <div className="w-full h-full flex items-center justify-center">
+            <p className="text-6xl md:text-7xl font-bold text-center text-black">
+              {currentItem.message}
+            </p>
+          </div>
+        )}
 
       </div>
     </main>

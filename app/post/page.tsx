@@ -1,16 +1,23 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { ChevronLeft, Image as ImageIcon, Send, X, Sparkles } from "lucide-react";
-import { providerInfo } from "../data";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, Image as ImageIcon, Send, X, Sparkles, CheckCircle2 } from "lucide-react";
+import { providerInfo, services } from "../data";
 import Image from "next/image";
 
 export default function PostPage() {
+  const router = useRouter();
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showTextWithImage, setShowTextWithImage] = useState(true);
+  const [selectedDuration, setSelectedDuration] = useState<number>(20);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(20);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleImageClick = () => {
       fileInputRef.current?.click();
@@ -34,10 +41,49 @@ export default function PostPage() {
       }
   };
 
+  // Handle countdown and auto-close
+  useEffect(() => {
+    if (showSuccess && countdown > 0) {
+      countdownRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            // Close/redirect after countdown
+            router.push("/");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
+    };
+  }, [showSuccess, countdown, router]);
+
   const handleSend = () => {
     if (!message.trim() && !selectedImage) return;
 
     setIsSending(true);
+
+    // Determine service type and get duration from data.ts
+    let duration = 20; // default in seconds
+    if (selectedImage) {
+      const imageService = services.find(s => s.id === "image");
+      if (imageService && imageService.variants.length > 0) {
+        // Use the first variant's duration, or match selectedDuration
+        const variant = imageService.variants.find(v => v.duration === selectedDuration) || imageService.variants[0];
+        duration = variant.duration;
+      }
+    } else {
+      const messageService = services.find(s => s.id === "message");
+      if (messageService && messageService.variants.length > 0) {
+        const variant = messageService.variants.find(v => v.duration === selectedDuration) || messageService.variants[0];
+        duration = variant.duration;
+      }
+    }
 
     // Create payload
     const payload = {
@@ -45,9 +91,10 @@ export default function PostPage() {
         type: selectedImage ? "image" : "text",
         user: "Guest User", // In a real app, this would come from auth
         platform: "guest",
-        message: message,
-        mediaUrl: selectedImage, // Pass the base64 image string
-        duration: 10000
+        message: showTextWithImage || !selectedImage ? message : "", // Only include message if showTextWithImage is true or no image
+        mediaUrl: selectedImage || null,
+        showText: showTextWithImage, // Flag to control text display
+        duration: duration * 1000 // Convert to milliseconds
     };
 
     // Send via BroadcastChannel
@@ -57,8 +104,10 @@ export default function PostPage() {
     
     setMessage("");
     handleRemoveImage();
+    setShowTextWithImage(true);
     setIsSending(false);
-    alert("ส่งข้อความเรียบร้อยแล้ว!");
+    setShowSuccess(true);
+    setCountdown(20);
   };
 
   return (
@@ -67,6 +116,25 @@ export default function PostPage() {
         
         {/* Background Ambient Glow */}
         <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-purple-900/20 to-transparent pointer-events-none"></div>
+
+        {/* Success Overlay */}
+        {showSuccess && (
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-[#0f0f12] border border-purple-500/30 rounded-3xl p-8 max-w-sm w-full mx-4 text-center shadow-[0_0_30px_rgba(168,85,247,0.3)]">
+              <div className="flex justify-center mb-4">
+                <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-12 h-12 text-white" />
+                </div>
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">ส่งข้อความเรียบร้อยแล้ว!</h2>
+              <p className="text-gray-400 mb-6">หน้าต่างจะปิดอัตโนมัติใน</p>
+              <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-6">
+                {countdown}
+              </div>
+              <p className="text-sm text-gray-500">วินาที</p>
+            </div>
+          </div>
+        )}
 
         {/* Header */}
         <div className="relative p-4 flex items-center justify-between z-10">
@@ -148,30 +216,68 @@ export default function PostPage() {
             </div>
 
             {/* Toolbar */}
-            <div className="flex items-center justify-between mb-8 px-2">
-                <div className="flex gap-3">
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleFileChange} 
-                        accept="image/*" 
-                        className="hidden" 
-                    />
-                    <button 
-                        onClick={handleImageClick}
-                        className={`p-3.5 rounded-2xl border transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-2 ${
-                            selectedImage 
-                            ? 'bg-purple-600 border-purple-500 text-white shadow-[0_0_15px_rgba(147,51,234,0.3)]' 
-                            : 'bg-[#1A1A2E] border-white/10 text-gray-400 hover:text-purple-400 hover:border-purple-500/30'
-                        }`}
-                    >
-                        <ImageIcon className="w-5 h-5" />
-                        {selectedImage && <span className="text-xs font-bold">รูปภาพ 1</span>}
-                    </button>
-                    {/* Placeholder for future feature */}
-                    <button className="p-3.5 rounded-2xl bg-[#1A1A2E] border border-white/10 text-gray-600 cursor-not-allowed opacity-50">
-                        <Sparkles className="w-5 h-5" />
-                    </button>
+            <div className="flex flex-col gap-4 mb-8">
+                <div className="flex items-center justify-between px-2">
+                    <div className="flex gap-3">
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            onChange={handleFileChange} 
+                            accept="image/*" 
+                            className="hidden" 
+                        />
+                        <button 
+                            onClick={handleImageClick}
+                            className={`p-3.5 rounded-2xl border transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-2 ${
+                                selectedImage 
+                                ? 'bg-purple-600 border-purple-500 text-white shadow-[0_0_15px_rgba(147,51,234,0.3)]' 
+                                : 'bg-[#1A1A2E] border-white/10 text-gray-400 hover:text-purple-400 hover:border-purple-500/30'
+                            }`}
+                        >
+                            <ImageIcon className="w-5 h-5" />
+                            {selectedImage && <span className="text-xs font-bold">รูปภาพ 1</span>}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Show Text with Image Option */}
+                {selectedImage && (
+                    <div className="flex items-center gap-3 px-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={showTextWithImage}
+                                onChange={(e) => setShowTextWithImage(e.target.checked)}
+                                className="w-5 h-5 rounded border-white/20 bg-white/5 text-purple-600 focus:ring-purple-500 focus:ring-2"
+                            />
+                            <span className="text-sm text-gray-300">แสดงข้อความบนรูปภาพ</span>
+                        </label>
+                    </div>
+                )}
+
+                {/* Duration Selection */}
+                <div className="px-2">
+                    <label className="block text-sm text-gray-400 mb-2">ระยะเวลาแสดงผล</label>
+                    <div className="flex gap-2">
+                        {(() => {
+                            const service = selectedImage 
+                                ? services.find(s => s.id === "image")
+                                : services.find(s => s.id === "message");
+                            return service?.variants.map((variant) => (
+                                <button
+                                    key={variant.id}
+                                    onClick={() => setSelectedDuration(variant.duration)}
+                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                                        selectedDuration === variant.duration
+                                            ? 'bg-purple-600 text-white shadow-[0_0_15px_rgba(147,51,234,0.3)]'
+                                            : 'bg-[#1A1A2E] border border-white/10 text-gray-400 hover:text-purple-400 hover:border-purple-500/30'
+                                    }`}
+                                >
+                                    {variant.name}
+                                </button>
+                            ));
+                        })()}
+                    </div>
                 </div>
             </div>
 
