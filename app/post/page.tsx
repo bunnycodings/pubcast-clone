@@ -29,7 +29,7 @@ export default function PostPage() {
   const platforms = [
     { id: "instagram", name: "Instagram", icon: Instagram, gradient: "from-purple-600 via-pink-500 to-orange-500" },
     { id: "facebook", name: "Facebook", icon: Facebook, gradient: "from-blue-600 to-blue-700" },
-    { id: "twitter", name: "X", icon: Twitter, gradient: "from-gray-800 to-gray-900" },
+    { id: "twitter", name: "X", icon: MessageSquare, gradient: "from-gray-800 to-gray-900" },
     { id: "tiktok", name: "TikTok", icon: Music2, gradient: "from-gray-800 to-gray-900" },
     { id: "guest", name: "Guest", icon: MessageSquare, gradient: "from-gray-600 to-gray-700" },
   ];
