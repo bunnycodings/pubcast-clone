@@ -3,42 +3,87 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Image as ImageIcon, Send, X, Sparkles, CheckCircle2 } from "lucide-react";
-import { providerInfo, services } from "../data";
+import { ChevronLeft, Image as ImageIcon, Send, X, CheckCircle2, Upload, AlertTriangle, Instagram, Facebook, Music2, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
+import { providerInfo, services, captionCategories } from "../data";
 import Image from "next/image";
 
 export default function PostPage() {
   const router = useRouter();
-  const [message, setMessage] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [showTextWithImage, setShowTextWithImage] = useState(true);
-  const [selectedDuration, setSelectedDuration] = useState<number>(20);
+  const [selectedPlatform, setSelectedPlatform] = useState<string>("instagram");
+  const [username, setUsername] = useState("");
+  const [message, setMessage] = useState("");
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [showWarningModal, setShowWarningModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [countdown, setCountdown] = useState(20);
+  const [showTextWithImage, setShowTextWithImage] = useState(true);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
+  const imageService = services.find(s => s.id === "image");
+
+  const platforms = [
+    { id: "instagram", name: "Instagram", icon: Instagram, gradient: "from-purple-600 via-pink-500 to-orange-500" },
+    { id: "facebook", name: "Facebook", icon: Facebook, gradient: "from-blue-600 to-blue-700" },
+    { id: "twitter", name: "X", icon: Twitter, gradient: "from-gray-800 to-gray-900" },
+    { id: "tiktok", name: "TikTok", icon: Music2, gradient: "from-gray-800 to-gray-900" },
+    { id: "guest", name: "Guest", icon: MessageSquare, gradient: "from-gray-600 to-gray-700" },
+  ];
 
   const handleImageClick = () => {
-      fileInputRef.current?.click();
+    fileInputRef.current?.click();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              setSelectedImage(reader.result as string);
-          };
-          reader.readAsDataURL(file);
-      }
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleRemoveImage = () => {
-      setSelectedImage(null);
-      if (fileInputRef.current) {
-          fileInputRef.current.value = "";
+    setSelectedImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleSelectVariant = (variant: any) => {
+    setSelectedVariant(variant);
+    setCurrentStep(2);
+  };
+
+  const handleSelectMessage = (msg: string) => {
+    setMessage(msg);
+    setShowMessageModal(false);
+  };
+
+  const handleNext = () => {
+    if (currentStep === 2) {
+      if (!selectedImage) {
+        alert("กรุณาอัพโหลดรูปภาพ");
+        return;
       }
+      if (!username.trim()) {
+        alert("กรุณาใส่ชื่อวาร์ปของคุณ");
+        return;
+      }
+      setCurrentStep(3);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   // Handle countdown and auto-close
@@ -47,7 +92,6 @@ export default function PostPage() {
       countdownRef.current = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
-            // Close/redirect after countdown
             router.push("/");
             return 0;
           }
@@ -64,48 +108,23 @@ export default function PostPage() {
   }, [showSuccess, countdown, router]);
 
   const handleSend = () => {
-    if (!message.trim() && !selectedImage) return;
+    if (!selectedImage || !selectedVariant) return;
 
-    setIsSending(true);
-
-    // Determine service type and get duration from data.ts
-    let duration = 20; // default in seconds
-    if (selectedImage) {
-      const imageService = services.find(s => s.id === "image");
-      if (imageService && imageService.variants.length > 0) {
-        // Use the first variant's duration, or match selectedDuration
-        const variant = imageService.variants.find(v => v.duration === selectedDuration) || imageService.variants[0];
-        duration = variant.duration;
-      }
-    } else {
-      const messageService = services.find(s => s.id === "message");
-      if (messageService && messageService.variants.length > 0) {
-        const variant = messageService.variants.find(v => v.duration === selectedDuration) || messageService.variants[0];
-        duration = variant.duration;
-      }
-    }
-
-    // Create payload
     const payload = {
-        id: Date.now(),
-        type: selectedImage ? "image" : "text",
-        user: "Guest User", // In a real app, this would come from auth
-        platform: "guest",
-        message: showTextWithImage || !selectedImage ? message : "", // Only include message if showTextWithImage is true or no image
-        mediaUrl: selectedImage || null,
-        showText: showTextWithImage, // Flag to control text display
-        duration: duration * 1000 // Convert to milliseconds
+      id: Date.now(),
+      type: "image",
+      user: username || "Guest User",
+      platform: selectedPlatform,
+      message: showTextWithImage && message ? message : "",
+      mediaUrl: selectedImage,
+      showText: showTextWithImage,
+      duration: selectedVariant.duration * 1000
     };
 
-    // Send via BroadcastChannel
     const channel = new BroadcastChannel('pubcast_channel');
     channel.postMessage(payload);
     channel.close();
     
-    setMessage("");
-    handleRemoveImage();
-    setShowTextWithImage(true);
-    setIsSending(false);
     setShowSuccess(true);
     setCountdown(20);
   };
@@ -136,168 +155,340 @@ export default function PostPage() {
           </div>
         )}
 
+        {/* Warning Modal */}
+        {showWarningModal && (
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg max-w-md w-full">
+              <div className="bg-red-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5" />
+                  <h3 className="font-bold">ห้ามใช้รูปภาพดังต่อไปนี้</h3>
+                </div>
+                <button onClick={() => setShowWarningModal(false)} className="text-white hover:text-gray-200">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 text-gray-800 text-sm space-y-2">
+                <ul className="list-disc list-inside space-y-1">
+                  <li>รูปภาพโฆษณาที่ผิดกฎหมาย เช่น การพนัน สินค้าแอลกอฮอล์ การชักชวนลงทุน ยาเสพติด สินค้าผิดกฎหมาย</li>
+                  <li>รูปภาพที่มีเนื้อหาไม่เหมาะสมหรือลามก</li>
+                  <li>รูปภาพที่ใช้แสดงความคิดเห็นหรือจุดยืนที่ละเมิดสิทธิหรือเสรีภาพของผู้อื่น</li>
+                  <li>รูปภาพที่กระทำผิดกฎหมายหรือการคุกคาม</li>
+                  <li>รูปภาพที่อาจก่อให้เกิดความขัดแย้ง ความรุนแรง ความแตกแยก หรือการดูหมิ่น</li>
+                  <li>รูปภาพที่มี QR Code หรือลิงก์เป็นส่วนประกอบ</li>
+                </ul>
+                <p className="text-red-600 text-xs mt-4">
+                  * ในกรณีที่มีการใช้ภาพที่ไม่เหมาะสมในเนื้อหาหรือการโฆษณา ทางผู้ให้บริการอาจปฏิเสธการให้บริการและไม่สามารถดำเนินการคืนเงินได้
+                </p>
+              </div>
+              <div className="p-4 border-t">
+                <button 
+                  onClick={() => setShowWarningModal(false)}
+                  className="w-full bg-red-600 text-white py-2 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                >
+                  เข้าใจแล้ว
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Message Selection Modal */}
+        {showMessageModal && (
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-[#1a1a2e] rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col">
+              <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                <h3 className="text-xl font-bold">เลือกข้อความ</h3>
+                <button onClick={() => setShowMessageModal(false)} className="text-white/70 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {captionCategories.map((category, idx) => (
+                  <div key={idx} className="border-b border-white/10 pb-2">
+                    <button
+                      onClick={() => setExpandedCategory(expandedCategory === category.title ? null : category.title)}
+                      className="w-full flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                      <span className="font-medium">{category.title}</span>
+                      {expandedCategory === category.title ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </button>
+                    {expandedCategory === category.title && (
+                      <div className="mt-2 space-y-1">
+                        {category.messages.map((msg, msgIdx) => (
+                          <div key={msgIdx} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg">
+                            <span className="text-sm flex-1">{msg}</span>
+                            <button
+                              onClick={() => handleSelectMessage(msg)}
+                              className="px-3 py-1 bg-gray-700 text-white text-xs rounded-lg hover:bg-gray-600 transition-colors"
+                            >
+                              เลือก
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="relative p-4 flex items-center justify-between z-10">
-            <Link href="/" className="p-2 -ml-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all">
-                <ChevronLeft className="w-6 h-6" />
-            </Link>
-            <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-                ส่งข้อความขึ้นจอ
-            </h1>
-            <div className="w-10"></div> {/* Spacer for balance */}
+          <Link href="/" className="p-2 -ml-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all">
+            <ChevronLeft className="w-6 h-6" />
+          </Link>
+          <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+            {currentStep === 1 ? "ส่งรูปขึ้นจอ" : currentStep === 2 ? "ส่งรูปขึ้นจอ" : "ส่งรูปขึ้นจอ"}
+          </h1>
+          <div className="w-10"></div>
+        </div>
+
+        {/* Progress Indicator */}
+        <div className="px-4 mb-6">
+          <div className="flex items-center justify-center gap-2">
+            {[1, 2, 3].map((step) => (
+              <div key={step} className="flex items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                  currentStep >= step 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-700 text-gray-400'
+                }`}>
+                  {step}
+                </div>
+                {step < 3 && (
+                  <div className={`w-12 h-0.5 ${
+                    currentStep > step ? 'bg-purple-600' : 'bg-gray-700'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-6 flex flex-col relative z-10">
-            
-            {/* Venue Info Card */}
-            <div className="flex items-center gap-4 mb-8 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
-                <div className="w-14 h-14 rounded-full border-2 border-[#D4AF37]/50 p-0.5 shadow-[0_0_15px_rgba(212,175,55,0.2)]">
-                    <Image
-                        src={providerInfo.logo}
-                        alt={providerInfo.name}
-                        width={56}
-                        height={56}
-                        unoptimized
-                        className="rounded-full object-cover w-full h-full"
+        <div className="flex-1 p-6 flex flex-col relative z-10 overflow-y-auto">
+          
+          {/* Step 1: Select Options */}
+          {currentStep === 1 && (
+            <>
+              <h2 className="text-xl font-bold mb-4">ระบุตัวเลือก</h2>
+              <div className="grid grid-cols-2 gap-4">
+                {imageService?.variants.map((variant) => (
+                  <button
+                    key={variant.id}
+                    onClick={() => handleSelectVariant(variant)}
+                    className="bg-gradient-to-br from-orange-900/50 to-purple-900/50 border border-purple-500/30 rounded-2xl p-4 flex flex-col items-center gap-3 hover:scale-105 transition-transform"
+                  >
+                    <ImageIcon className="w-8 h-8 text-white/80" />
+                    <div className="text-center">
+                      <p className="font-bold text-lg">{variant.name}</p>
+                      <p className="text-sm text-white/70">{variant.price} บาท</p>
+                    </div>
+                    <button className="w-full bg-white text-gray-900 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors">
+                      เลือก
+                    </button>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Step 2: Upload & Details */}
+          {currentStep === 2 && (
+            <>
+              {/* Warning Text */}
+              <div className="mb-4 text-xs text-gray-400 space-y-1">
+                <p>
+                  ห้ามโพสต์เนื้อหาโฆษณา หากต้องการลงโฆษณาติดต่อ{" "}
+                  <button className="text-purple-400 hover:underline">PubCast Ads</button>
+                </p>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  <button 
+                    onClick={() => setShowWarningModal(true)}
+                    className="text-yellow-400 hover:underline"
+                  >
+                    ข้อจำกัดรูปภาพ
+                  </button>
+                </div>
+              </div>
+
+              {/* Image Upload */}
+              <div className="mb-6">
+                {selectedImage ? (
+                  <div className="relative w-full h-64 rounded-xl overflow-hidden border border-white/10">
+                    <Image 
+                      src={selectedImage} 
+                      alt="Preview" 
+                      fill 
+                      className="object-cover" 
+                      unoptimized
                     />
-                </div>
-                <div>
-                    <h3 className="font-bold text-lg text-white">{providerInfo.name}</h3>
-                    <div className="flex items-center gap-2">
-                        <span className="flex h-2 w-2 relative">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                        </span>
-                        <p className="text-xs text-green-400 font-medium">ออนไลน์</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Input Area */}
-            <div className="bg-[#1a1a20] rounded-3xl p-1 border border-white/10 shadow-inner mb-6 group focus-within:border-purple-500/50 focus-within:shadow-[0_0_20px_rgba(168,85,247,0.15)] transition-all duration-300">
-                <div className="bg-[#0f0f12] rounded-[20px] p-4 min-h-[180px] relative">
-                    <textarea
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder="พิมพ์ข้อความของคุณที่นี่..."
-                        className="w-full bg-transparent text-white placeholder-gray-600 resize-none focus:outline-none text-lg leading-relaxed"
-                        rows={4}
-                        maxLength={100}
-                    />
-                    
-                    {/* Image Preview */}
-                    {selectedImage && (
-                        <div className="relative w-full h-48 mt-4 rounded-xl overflow-hidden border border-white/10 group/preview">
-                            <Image 
-                                src={selectedImage} 
-                                alt="Preview" 
-                                fill 
-                                className="object-cover" 
-                                unoptimized
-                            />
-                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/preview:opacity-100 transition-opacity"></div>
-                            <button 
-                                onClick={handleRemoveImage}
-                                className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white p-1.5 rounded-full hover:bg-red-500 transition-all transform hover:scale-110"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-                    )}
-
-                    <div className="absolute bottom-4 right-4 text-xs font-medium text-gray-600">
-                        <span className={`${message.length > 90 ? 'text-yellow-500' : ''}`}>
-                            {message.length}
-                        </span>
-                        /100
-                    </div>
-                </div>
-            </div>
-
-            {/* Toolbar */}
-            <div className="flex flex-col gap-4 mb-8">
-                <div className="flex items-center justify-between px-2">
-                    <div className="flex gap-3">
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            onChange={handleFileChange} 
-                            accept="image/*" 
-                            className="hidden" 
-                        />
-                        <button 
-                            onClick={handleImageClick}
-                            className={`p-3.5 rounded-2xl border transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-2 ${
-                                selectedImage 
-                                ? 'bg-purple-600 border-purple-500 text-white shadow-[0_0_15px_rgba(147,51,234,0.3)]' 
-                                : 'bg-[#1A1A2E] border-white/10 text-gray-400 hover:text-purple-400 hover:border-purple-500/30'
-                            }`}
-                        >
-                            <ImageIcon className="w-5 h-5" />
-                            {selectedImage && <span className="text-xs font-bold">รูปภาพ 1</span>}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Show Text with Image Option */}
-                {selectedImage && (
-                    <div className="flex items-center gap-3 px-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={showTextWithImage}
-                                onChange={(e) => setShowTextWithImage(e.target.checked)}
-                                className="w-5 h-5 rounded border-white/20 bg-white/5 text-purple-600 focus:ring-purple-500 focus:ring-2"
-                            />
-                            <span className="text-sm text-gray-300">แสดงข้อความบนรูปภาพ</span>
-                        </label>
-                    </div>
-                )}
-
-                {/* Duration Selection */}
-                <div className="px-2">
-                    <label className="block text-sm text-gray-400 mb-2">ระยะเวลาแสดงผล</label>
-                    <div className="flex gap-2">
-                        {(() => {
-                            const service = selectedImage 
-                                ? services.find(s => s.id === "image")
-                                : services.find(s => s.id === "message");
-                            return service?.variants.map((variant) => (
-                                <button
-                                    key={variant.id}
-                                    onClick={() => setSelectedDuration(variant.duration)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                                        selectedDuration === variant.duration
-                                            ? 'bg-purple-600 text-white shadow-[0_0_15px_rgba(147,51,234,0.3)]'
-                                            : 'bg-[#1A1A2E] border border-white/10 text-gray-400 hover:text-purple-400 hover:border-purple-500/30'
-                                    }`}
-                                >
-                                    {variant.name}
-                                </button>
-                            ));
-                        })()}
-                    </div>
-                </div>
-            </div>
-
-            {/* Send Button */}
-            <button 
-                onClick={handleSend}
-                disabled={(!message.trim() && !selectedImage) || isSending}
-                className="w-full bg-gradient-to-r from-purple-600 via-purple-500 to-pink-600 text-white font-bold py-4 rounded-2xl shadow-[0_10px_30px_-10px_rgba(168,85,247,0.5)] flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none group hover:brightness-110"
-            >
-                {isSending ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <button 
+                      onClick={handleRemoveImage}
+                      className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white p-2 rounded-full hover:bg-red-500 transition-all"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 ) : (
-                    <>
-                        <Send className="w-5 h-5 transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
-                        <span className="text-lg">ส่งขึ้นจอ</span>
-                    </>
+                  <div 
+                    onClick={handleImageClick}
+                    className="w-full h-64 border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-purple-500/50 transition-colors bg-white/5"
+                  >
+                    <Upload className="w-12 h-12 text-white/50" />
+                    <p className="text-white/70">กดที่นี่ เพื่ออัพโหลดรูปภาพ</p>
+                  </div>
                 )}
-            </button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
+              </div>
+
+              {/* Social Media Selection */}
+              <div className="mb-6">
+                <h3 className="text-lg font-bold mb-3">ชื่อวาร์ปของคุณ</h3>
+                <div className="flex gap-3 mb-3">
+                  {platforms.map((platform) => {
+                    const Icon = platform.icon;
+                    return (
+                      <button
+                        key={platform.id}
+                        onClick={() => setSelectedPlatform(platform.id)}
+                        className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all ${
+                          selectedPlatform === platform.id
+                            ? `bg-gradient-to-br ${platform.gradient} border-2 border-teal-400 scale-110`
+                            : 'bg-gray-700 border-2 border-transparent'
+                        }`}
+                      >
+                        <Icon className="w-6 h-6 text-white" />
+                      </button>
+                    );
+                  })}
+                </div>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="กรุณาใส่ชื่อไอจีของคุณ"
+                  className="w-full bg-[#1a1a20] border border-purple-500/50 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              {/* Message Selection */}
+              <div className="mb-6">
+                <h3 className="text-lg font-bold mb-3">เลือกข้อความ</h3>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="เลือกข้อความ"
+                    className="flex-1 bg-[#1a1a20] border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <button
+                    onClick={() => setShowMessageModal(true)}
+                    className="px-6 bg-white text-gray-900 rounded-xl font-medium hover:bg-gray-100 transition-colors"
+                  >
+                    เลือก
+                  </button>
+                </div>
+              </div>
+
+              {/* Show Text with Image Option */}
+              {selectedImage && (
+                <div className="mb-6 flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showTextWithImage}
+                      onChange={(e) => setShowTextWithImage(e.target.checked)}
+                      className="w-5 h-5 rounded border-white/20 bg-white/5 text-purple-600 focus:ring-purple-500 focus:ring-2"
+                    />
+                    <span className="text-sm text-gray-300">แสดงข้อความบนรูปภาพ</span>
+                  </label>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Step 3: Review */}
+          {currentStep === 3 && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-bold">ตรวจสอบข้อมูล</h2>
+              
+              <div className="bg-white/5 rounded-xl p-4 space-y-4">
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">ระยะเวลา</p>
+                  <p className="font-bold">{selectedVariant?.name} - {selectedVariant?.price} บาท</p>
+                </div>
+                
+                {selectedImage && (
+                  <div>
+                    <p className="text-sm text-gray-400 mb-2">รูปภาพ</p>
+                    <div className="relative w-full h-48 rounded-lg overflow-hidden">
+                      <Image src={selectedImage} alt="Preview" fill className="object-cover" unoptimized />
+                    </div>
+                  </div>
+                )}
+                
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">ชื่อวาร์ป</p>
+                  <p className="font-bold">{username}</p>
+                </div>
+                
+                {message && (
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">ข้อความ</p>
+                    <p className="font-bold">{message}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
         </div>
+
+        {/* Navigation Buttons */}
+        {!showSuccess && (
+          <div className="p-6 border-t border-white/10 flex gap-3">
+            {currentStep > 1 && (
+              <button
+                onClick={handleBack}
+                className="flex-1 bg-white text-gray-900 py-3 rounded-xl font-medium hover:bg-gray-100 transition-colors"
+              >
+                กลับไปตัวเลือก
+              </button>
+            )}
+            {currentStep < 3 ? (
+              <button
+                onClick={currentStep === 2 ? handleNext : undefined}
+                className="flex-1 bg-purple-600 text-white py-3 rounded-xl font-medium hover:bg-purple-700 transition-colors"
+              >
+                ดำเนินการต่อ
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-medium hover:brightness-110 transition-all flex items-center justify-center gap-2"
+              >
+                <Send className="w-5 h-5" />
+                ส่งขึ้นจอ
+              </button>
+            )}
+          </div>
+        )}
 
       </div>
     </main>
