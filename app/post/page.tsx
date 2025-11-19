@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Image as ImageIcon, Send, X, CheckCircle2, Upload, AlertTriangle, Instagram, Facebook, Music2, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronLeft, Image as ImageIcon, Send, X, Upload, AlertTriangle, Instagram, Facebook, Music2, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
 import { providerInfo, services, captionCategories } from "../data";
 import Image from "next/image";
 
@@ -18,12 +18,9 @@ export default function PostPage() {
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [showWarningModal, setShowWarningModal] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [countdown, setCountdown] = useState(20);
   const [showTextWithImage, setShowTextWithImage] = useState(true);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const imageService = services.find(s => s.id === "image");
 
   const platforms = [
