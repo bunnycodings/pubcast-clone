@@ -129,7 +129,9 @@ export default function ScreenPage() {
 
   // Determine Icon based on platform - use img tags for external URLs to avoid hydration issues
   const getIcon = (platform: string) => {
-      if (!platform || !isMounted) return <Music className="w-12 h-12 text-white" />;
+      if (!platform || !isMounted) {
+          return <img src="https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" alt="Default" width={48} height={48} className="w-12 h-12" />;
+      }
       
       switch(platform) {
           case 'instagram': 
@@ -143,9 +145,9 @@ export default function ScreenPage() {
           case 'onlyfans':
               return <img src="https://m.pubcastplus.com/images/social/onlyfans.svg" alt="OnlyFans" width={48} height={48} className="w-12 h-12" loading="lazy" />;
           case 'guest': 
-              return <MessageSquare className="w-12 h-12 text-white" />;
+              return <img src="https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" alt="Guest" width={48} height={48} className="w-12 h-12" />;
           default: 
-              return <Music className="w-12 h-12 text-white" />;
+              return <img src="https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" alt="Default" width={48} height={48} className="w-12 h-12" />;
       }
   };
 

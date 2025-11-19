@@ -253,7 +253,13 @@ export default function PostPage() {
                     onClick={() => handleSelectVariant(variant)}
                     className="bg-gradient-to-br from-orange-900/50 to-purple-900/50 border border-purple-500/30 rounded-2xl p-4 flex flex-col items-center gap-3 hover:scale-105 transition-transform"
                   >
-                    <ImageIcon className="w-8 h-8 text-white/80" />
+                    <img 
+                      src="https://resize-img.pubcastplus.com/protected/default-gift/0_1690315866217.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" 
+                      alt="Icon" 
+                      width={32} 
+                      height={32} 
+                      className="w-8 h-8"
+                    />
                     <div className="text-center">
                       <p className="font-bold text-lg">{variant.name}</p>
                       <p className="text-sm text-white/70">{variant.price} บาท</p>
@@ -331,17 +337,17 @@ export default function PostPage() {
                     const getPlatformIcon = () => {
                       switch(platform.id) {
                         case 'instagram':
-                          return <img src="https://m.pubcastplus.com/images/social/instagram.svg" alt="Instagram" width={24} height={24} className="w-6 h-6" />;
+                          return <img src="https://m.pubcastplus.com/images/social/instagram.svg" alt="Instagram" width={24} height={24} className="w-6 h-6" loading="lazy" />;
                         case 'facebook':
-                          return <img src="https://m.pubcastplus.com/images/social/facebook.svg" alt="Facebook" width={24} height={24} className="w-6 h-6" />;
+                          return <img src="https://m.pubcastplus.com/images/social/facebook.svg" alt="Facebook" width={24} height={24} className="w-6 h-6" loading="lazy" />;
                         case 'twitter':
-                          return <img src="https://m.pubcastplus.com/images/social/twitter.png" alt="Twitter" width={24} height={24} className="w-6 h-6" />;
+                          return <img src="https://m.pubcastplus.com/images/social/twitter.png" alt="Twitter" width={24} height={24} className="w-6 h-6" loading="lazy" />;
                         case 'tiktok':
-                          return <img src="https://m.pubcastplus.com/images/social/tiktok.svg?v=4" alt="TikTok" width={24} height={24} className="w-6 h-6" />;
+                          return <img src="https://m.pubcastplus.com/images/social/tiktok.svg?v=4" alt="TikTok" width={24} height={24} className="w-6 h-6" loading="lazy" />;
                         case 'guest':
-                          return <MessageSquare className="w-6 h-6 text-white" />;
+                          return <img src="https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" alt="Guest" width={24} height={24} className="w-6 h-6" />;
                         default:
-                          return <MessageSquare className="w-6 h-6 text-white" />;
+                          return <img src="https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" alt="Default" width={24} height={24} className="w-6 h-6" />;
                       }
                     };
                     
