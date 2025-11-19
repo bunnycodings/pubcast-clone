@@ -1,0 +1,174 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
+import { Instagram, Music, MessageSquare } from "lucide-react"; 
+import { providerInfo } from "../data";
+
+// Fallback queue in case no real data arrives
+const DEFAULT_QUEUE = [
+  {
+    id: 1,
+    type: "text",
+    user: "System",
+    platform: "system",
+    message: "Waiting for messages...",
+    mediaUrl: null,
+    duration: 10000
+  }
+];
+
+export default function ScreenPage() {
+  const [queue, setQueue] = useState<any[]>([]);
+  const [currentItem, setCurrentItem] = useState<any>(DEFAULT_QUEUE[0]);
+  const [show, setShow] = useState(true);
+  
+  // Use a ref to track the queue to avoid stale closures in setInterval
+  const queueRef = useRef<any[]>([]);
+  
+  // Listen for Broadcast Channel messages
+  useEffect(() => {
+    const channel = new BroadcastChannel('pubcast_channel');
+    
+    channel.onmessage = (event) => {
+        console.log("Received message:", event.data);
+        const newItem = event.data;
+        
+        // Add to queue
+        setQueue(prev => {
+            const newQueue = [...prev, newItem];
+            queueRef.current = newQueue;
+            return newQueue;
+        });
+    };
+
+    return () => {
+        channel.close();
+    };
+  }, []);
+
+  // Display Logic
+  useEffect(() => {
+    const displayLoop = async () => {
+        if (queueRef.current.length > 0) {
+            // Fade out
+            setShow(false);
+            
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait for fade out
+
+            // Get next item (FIFO)
+            setQueue(prev => {
+                const [next, ...rest] = prev;
+                setCurrentItem(next);
+                queueRef.current = rest;
+                return rest;
+            });
+
+            // Fade in
+            setShow(true);
+
+            // Wait for duration (mocked as 10s for now, or use item.duration)
+            setTimeout(displayLoop, 10000);
+        } else {
+            // Check again soon if queue is empty
+             setTimeout(displayLoop, 1000);
+        }
+    };
+
+    // Start the loop
+    const timeoutId = setTimeout(displayLoop, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, []); // Run once on mount, the loop manages itself
+
+  // Determine Icon based on platform
+  const getIcon = (platform: string) => {
+      switch(platform) {
+          case 'instagram': return <Instagram className="w-12 h-12 text-white" />;
+          case 'guest': return <MessageSquare className="w-12 h-12 text-white" />;
+          default: return <Music className="w-12 h-12 text-white" />;
+      }
+  };
+
+  return (
+    <main className="w-screen h-screen bg-black overflow-hidden flex items-center justify-center font-sans">
+      {/* Background Context */}
+      <div className="absolute inset-0 overflow-hidden">
+         <Image
+            src={providerInfo.logo}
+            alt="Background"
+            fill
+            className="object-cover opacity-10 blur-xl"
+            unoptimized
+         />
+      </div>
+      
+      {/* Main Content Container */}
+      <div className={`relative z-10 flex w-full max-w-7xl h-[80vh] transition-all duration-500 transform ${show ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+        
+        {/* Left Side: Media Content */}
+        <div className="flex-1 bg-black/40 backdrop-blur-sm border-2 border-purple-500/30 rounded-l-3xl overflow-hidden relative flex items-center justify-center">
+            {currentItem.mediaUrl ? (
+                <div className="relative w-full h-full p-4">
+                    <Image 
+                        src={currentItem.mediaUrl} 
+                        alt="User Content" 
+                        fill 
+                        className="object-contain rounded-xl shadow-[0_0_30px_rgba(168,85,247,0.4)]"
+                        unoptimized
+                    />
+                </div>
+            ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                    <Music className="w-32 h-32 text-purple-500 animate-pulse" />
+                </div>
+            )}
+            
+            {/* Corner Decoration */}
+            <div className="absolute top-0 left-0 w-32 h-32 border-t-4 border-l-4 border-purple-500 rounded-tl-3xl z-20"></div>
+            <div className="absolute bottom-0 right-0 w-32 h-32 border-b-4 border-r-4 border-blue-500 rounded-br-3xl z-20"></div>
+        </div>
+
+        {/* Right Side: Message & User Info */}
+        <div className="w-[40%] bg-gradient-to-br from-[#1a1a2e] to-[#16213e] border-y-2 border-r-2 border-blue-500/30 rounded-r-3xl flex flex-col relative overflow-hidden">
+            
+            {/* Platform Icon & User */}
+            <div className="flex flex-col items-center justify-center pt-12 pb-6 z-10">
+                <div className="w-20 h-20 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg mb-4">
+                    {getIcon(currentItem.platform)}
+                </div>
+                <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 drop-shadow-sm">
+                    {currentItem.user}
+                </h2>
+            </div>
+
+            {/* Message Area */}
+            <div className="flex-1 px-8 flex items-center justify-center z-10 overflow-hidden">
+                <p className="text-4xl md:text-5xl font-bold text-white text-center leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] break-words w-full max-h-full overflow-y-auto">
+                    {currentItem.message}
+                </p>
+            </div>
+
+            {/* Venue Logo at Bottom */}
+            <div className="h-24 bg-black/30 flex items-center justify-center gap-3 mt-auto border-t border-white/10 z-10">
+                <div className="w-10 h-10 rounded-full overflow-hidden border border-[#D4AF37]">
+                     <Image
+                        src={providerInfo.logo}
+                        alt="Logo"
+                        width={40}
+                        height={40}
+                        unoptimized
+                        className="object-cover"
+                     />
+                </div>
+                <span className="text-xl font-bold text-[#D4AF37] tracking-wider uppercase">{providerInfo.name}</span>
+            </div>
+
+            {/* Animated Background Elements for the Card */}
+            <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-br from-purple-500/10 via-transparent to-blue-500/10 animate-spin-slow pointer-events-none"></div>
+        </div>
+
+      </div>
+    </main>
+  );
+}
