@@ -33,6 +33,7 @@ export const services = [
     variants: [
       { id: "message_20", name: "20 วินาที", price: 29, duration: 20 },
       { id: "message_40", name: "40 วินาที", price: 49, duration: 40 },
+      { id: "message_60", name: "60 วินาที", price: 69, duration: 60 },
     ]
   },
   {
