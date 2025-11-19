@@ -34,7 +34,7 @@ export default function PostPage() {
       }
   };
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!message.trim() && !selectedImage) return;
 
     setIsSending(true);
@@ -54,9 +54,6 @@ export default function PostPage() {
     const channel = new BroadcastChannel('pubcast_channel');
     channel.postMessage(payload);
     channel.close();
-
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
     
     setMessage("");
     handleRemoveImage();
