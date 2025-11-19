@@ -86,26 +86,6 @@ export default function PostPage() {
     }
   };
 
-  // Handle countdown and auto-close
-  useEffect(() => {
-    if (showSuccess && countdown > 0) {
-      countdownRef.current = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            router.push("/");
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (countdownRef.current) {
-        clearInterval(countdownRef.current);
-      }
-    };
-  }, [showSuccess, countdown, router]);
 
   const handleSend = () => {
     if (!selectedImage || !selectedVariant) return;
@@ -125,8 +105,17 @@ export default function PostPage() {
     channel.postMessage(payload);
     channel.close();
     
-    setShowSuccess(true);
-    setCountdown(20);
+    // Reset form and redirect
+    setMessage("");
+    handleRemoveImage();
+    setShowTextWithImage(true);
+    setSelectedPlatform("instagram");
+    setUsername("");
+    setCurrentStep(1);
+    setSelectedVariant(null);
+    
+    // Redirect immediately
+    router.push("/");
   };
 
   return (
@@ -135,25 +124,6 @@ export default function PostPage() {
         
         {/* Background Ambient Glow */}
         <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-purple-900/20 to-transparent pointer-events-none"></div>
-
-        {/* Success Overlay */}
-        {showSuccess && (
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="bg-[#0f0f12] border border-purple-500/30 rounded-3xl p-8 max-w-sm w-full mx-4 text-center shadow-[0_0_30px_rgba(168,85,247,0.3)]">
-              <div className="flex justify-center mb-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
-                  <CheckCircle2 className="w-12 h-12 text-white" />
-                </div>
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">ส่งข้อความเรียบร้อยแล้ว!</h2>
-              <p className="text-gray-400 mb-6">หน้าต่างจะปิดอัตโนมัติใน</p>
-              <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-6">
-                {countdown}
-              </div>
-              <p className="text-sm text-gray-500">วินาที</p>
-            </div>
-          </div>
-        )}
 
         {/* Warning Modal */}
         {showWarningModal && (
@@ -461,7 +431,7 @@ export default function PostPage() {
         </div>
 
         {/* Navigation Buttons */}
-        {!showSuccess && (
+        {(
           <div className="p-6 border-t border-white/10 flex gap-3">
             {currentStep > 1 && (
               <button
