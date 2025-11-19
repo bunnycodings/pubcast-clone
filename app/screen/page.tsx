@@ -22,11 +22,17 @@ export default function ScreenPage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [currentItem, setCurrentItem] = useState<any>(null);
   const [show, setShow] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   
   // Use a ref to track the queue and processing state to avoid stale closures
   const queueRef = useRef<any[]>([]);
   const isProcessingRef = useRef<boolean>(false);
   const displayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Ensure component is mounted (client-side only)
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
   // Display Logic - using useCallback to avoid stale closures
   const processNextItem = useCallback(async () => {
@@ -76,40 +82,50 @@ export default function ScreenPage() {
     }
   }, []);
   
-  // Listen for Broadcast Channel messages
+  // Listen for Broadcast Channel messages (client-side only)
   useEffect(() => {
-    const channel = new BroadcastChannel('pubcast_channel');
+    if (!isMounted || typeof window === 'undefined') return;
     
-    channel.onmessage = (event) => {
-        console.log("Received message:", event.data);
-        const newItem = event.data;
-        
-        // Add to queue
-        setQueue(prev => {
-            const newQueue = [...prev, newItem];
-            queueRef.current = newQueue;
-            
-            // If not currently processing, start processing immediately
-            if (!isProcessingRef.current) {
-                // Clear any existing timeout
-                if (displayTimeoutRef.current) {
-                    clearTimeout(displayTimeoutRef.current);
-                }
-                // Start processing immediately
-                processNextItem();
-            }
-            
-            return newQueue;
-        });
-    };
+    let channel: BroadcastChannel | null = null;
+    
+    try {
+      channel = new BroadcastChannel('pubcast_channel');
+      
+      channel.onmessage = (event) => {
+          console.log("Received message:", event.data);
+          const newItem = event.data;
+          
+          // Add to queue
+          setQueue(prev => {
+              const newQueue = [...prev, newItem];
+              queueRef.current = newQueue;
+              
+              // If not currently processing, start processing immediately
+              if (!isProcessingRef.current) {
+                  // Clear any existing timeout
+                  if (displayTimeoutRef.current) {
+                      clearTimeout(displayTimeoutRef.current);
+                  }
+                  // Start processing immediately
+                  processNextItem();
+              }
+              
+              return newQueue;
+          });
+      };
+    } catch (error) {
+      console.error("BroadcastChannel not supported:", error);
+    }
 
     return () => {
-        channel.close();
+        if (channel) {
+            channel.close();
+        }
         if (displayTimeoutRef.current) {
             clearTimeout(displayTimeoutRef.current);
         }
     };
-  }, [processNextItem]);
+  }, [processNextItem, isMounted]);
 
   // Determine Icon based on platform
   const getIcon = (platform: string) => {
@@ -128,6 +144,14 @@ export default function ScreenPage() {
   const hasImage = currentItem?.mediaUrl;
   const hasMessage = currentItem?.message && currentItem.message.trim();
   const shouldShow = show && currentItem && !isDefaultMessage && (hasImage || hasMessage);
+
+  // Don't render until mounted to avoid hydration issues
+  if (!isMounted) {
+    return (
+      <main className="w-screen h-screen bg-black overflow-hidden flex items-center justify-center font-sans">
+      </main>
+    );
+  }
 
   return (
     <main className="w-screen h-screen bg-black overflow-hidden flex items-center justify-center font-sans">
