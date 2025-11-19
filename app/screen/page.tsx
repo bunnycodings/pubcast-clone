@@ -127,19 +127,21 @@ export default function ScreenPage() {
     };
   }, [processNextItem, isMounted]);
 
-  // Determine Icon based on platform
+  // Determine Icon based on platform - use img tags for external URLs to avoid hydration issues
   const getIcon = (platform: string) => {
+      if (!platform) return <Music className="w-12 h-12 text-white" />;
+      
       switch(platform) {
           case 'instagram': 
-              return <Image src="https://m.pubcastplus.com/images/social/instagram.svg" alt="Instagram" width={48} height={48} className="w-12 h-12" unoptimized />;
+              return <img src="https://m.pubcastplus.com/images/social/instagram.svg" alt="Instagram" width={48} height={48} className="w-12 h-12" />;
           case 'facebook': 
-              return <Image src="https://m.pubcastplus.com/images/social/facebook.svg" alt="Facebook" width={48} height={48} className="w-12 h-12" unoptimized />;
+              return <img src="https://m.pubcastplus.com/images/social/facebook.svg" alt="Facebook" width={48} height={48} className="w-12 h-12" />;
           case 'twitter': 
-              return <Image src="https://m.pubcastplus.com/images/social/twitter.png" alt="Twitter" width={48} height={48} className="w-12 h-12" unoptimized />;
+              return <img src="https://m.pubcastplus.com/images/social/twitter.png" alt="Twitter" width={48} height={48} className="w-12 h-12" />;
           case 'tiktok': 
-              return <Image src="https://m.pubcastplus.com/images/social/tiktok.svg?v=4" alt="TikTok" width={48} height={48} className="w-12 h-12" unoptimized />;
+              return <img src="https://m.pubcastplus.com/images/social/tiktok.svg?v=4" alt="TikTok" width={48} height={48} className="w-12 h-12" />;
           case 'onlyfans':
-              return <Image src="https://m.pubcastplus.com/images/social/onlyfans.svg" alt="OnlyFans" width={48} height={48} className="w-12 h-12" unoptimized />;
+              return <img src="https://m.pubcastplus.com/images/social/onlyfans.svg" alt="OnlyFans" width={48} height={48} className="w-12 h-12" />;
           case 'guest': 
               return <MessageSquare className="w-12 h-12 text-white" />;
           default: 
@@ -209,14 +211,14 @@ export default function ScreenPage() {
                       {getIcon(currentItem.platform)}
                   </div>
                   <h2 className="text-4xl font-bold drop-shadow-sm text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-                      {currentItem.user}
+                      {currentItem.user ? (typeof currentItem.user === 'string' ? currentItem.user.replace(/\d+\s*(วินาที|second|seconds)/gi, '').trim() : currentItem.user) : ''}
                   </h2>
               </div>
 
               {/* Message Area */}
               <div className="flex-1 px-8 flex items-center justify-center z-10 overflow-hidden">
                   <p className="text-4xl md:text-5xl font-bold text-center leading-tight break-words w-full max-h-full overflow-y-auto text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
-                      {currentItem.message}
+                      {currentItem.message ? (typeof currentItem.message === 'string' ? currentItem.message.replace(/\d+\s*(วินาที|second|seconds)/gi, '').trim() : currentItem.message) : ''}
                   </p>
               </div>
 
