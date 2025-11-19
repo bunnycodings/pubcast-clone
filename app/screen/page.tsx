@@ -21,7 +21,7 @@ const DEFAULT_QUEUE = [
 export default function ScreenPage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [currentItem, setCurrentItem] = useState<any>(DEFAULT_QUEUE[0]);
-  const [show, setShow] = useState(true);
+  const [show, setShow] = useState(false);
   
   // Use a ref to track the queue and processing state to avoid stale closures
   const queueRef = useRef<any[]>([]);
@@ -61,14 +61,13 @@ export default function ScreenPage() {
             setShow(false);
             isProcessingRef.current = false;
             
-            // Wait a bit then process next item or show default
+            // Wait a bit then process next item or keep black screen
             setTimeout(() => {
                 if (queueRef.current.length > 0) {
                     processNextItem();
                 } else {
-                    // Show default message if queue is empty
-                    setCurrentItem(DEFAULT_QUEUE[0]);
-                    setShow(true);
+                    // Keep screen black when queue is empty
+                    setShow(false);
                 }
             }, 500);
         }, duration);
@@ -130,19 +129,22 @@ export default function ScreenPage() {
 
   return (
     <main className="w-screen h-screen bg-black overflow-hidden flex items-center justify-center font-sans">
-      {/* Background Context */}
-      <div className="absolute inset-0 overflow-hidden">
-         <Image
-            src={providerInfo.logo}
-            alt="Background"
-            fill
-            className="object-cover opacity-10 blur-xl"
-            unoptimized
-         />
-      </div>
+      {/* Background Context - Only show when content is visible */}
+      {show && (
+        <div className="absolute inset-0 overflow-hidden">
+           <Image
+              src={providerInfo.logo}
+              alt="Background"
+              fill
+              className="object-cover opacity-10 blur-xl"
+              unoptimized
+           />
+        </div>
+      )}
       
       {/* Main Content Container - Two Panel Layout */}
-      <div className={`relative z-10 flex w-full max-w-7xl h-[80vh] transition-all duration-500 transform ${show ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+      {show && (
+        <div className={`relative z-10 flex w-full max-w-7xl h-[80vh] transition-all duration-500 transform ${show ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
         
         {/* Left Side: Image */}
         <div className="flex-1 bg-black/40 backdrop-blur-sm border-2 border-purple-500/30 rounded-l-3xl overflow-hidden relative flex items-center justify-center">
@@ -215,8 +217,8 @@ export default function ScreenPage() {
             {/* Animated Background Elements for the Card */}
             <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-br from-purple-500/10 via-transparent to-blue-500/10 animate-spin-slow pointer-events-none"></div>
         </div>
-
-      </div>
+        </div>
+      )}
     </main>
   );
 }
