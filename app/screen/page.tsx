@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import { Instagram, Music, MessageSquare, Facebook, Music2 } from "lucide-react"; 
+import { Instagram, Music, MessageSquare, Facebook, Music2, X } from "lucide-react"; 
 import { providerInfo } from "../data";
 
 // Fallback queue in case no real data arrives
@@ -132,7 +132,7 @@ export default function ScreenPage() {
       switch(platform) {
           case 'instagram': return <Instagram className="w-12 h-12 text-white" />;
           case 'facebook': return <Facebook className="w-12 h-12 text-white" />;
-          case 'twitter': return <MessageSquare className="w-12 h-12 text-white" />;
+          case 'twitter': return <X className="w-12 h-12 text-white" />;
           case 'tiktok': return <Music2 className="w-12 h-12 text-white" />;
           case 'guest': return <MessageSquare className="w-12 h-12 text-white" />;
           default: return <Music className="w-12 h-12 text-white" />;
