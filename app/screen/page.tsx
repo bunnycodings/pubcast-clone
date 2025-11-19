@@ -129,19 +129,19 @@ export default function ScreenPage() {
 
   // Determine Icon based on platform - use img tags for external URLs to avoid hydration issues
   const getIcon = (platform: string) => {
-      if (!platform) return <Music className="w-12 h-12 text-white" />;
+      if (!platform || !isMounted) return <Music className="w-12 h-12 text-white" />;
       
       switch(platform) {
           case 'instagram': 
-              return <img src="https://m.pubcastplus.com/images/social/instagram.svg" alt="Instagram" width={48} height={48} className="w-12 h-12" />;
+              return <img src="https://m.pubcastplus.com/images/social/instagram.svg" alt="Instagram" width={48} height={48} className="w-12 h-12" loading="lazy" />;
           case 'facebook': 
-              return <img src="https://m.pubcastplus.com/images/social/facebook.svg" alt="Facebook" width={48} height={48} className="w-12 h-12" />;
+              return <img src="https://m.pubcastplus.com/images/social/facebook.svg" alt="Facebook" width={48} height={48} className="w-12 h-12" loading="lazy" />;
           case 'twitter': 
-              return <img src="https://m.pubcastplus.com/images/social/twitter.png" alt="Twitter" width={48} height={48} className="w-12 h-12" />;
+              return <img src="https://m.pubcastplus.com/images/social/twitter.png" alt="Twitter" width={48} height={48} className="w-12 h-12" loading="lazy" />;
           case 'tiktok': 
-              return <img src="https://m.pubcastplus.com/images/social/tiktok.svg?v=4" alt="TikTok" width={48} height={48} className="w-12 h-12" />;
+              return <img src="https://m.pubcastplus.com/images/social/tiktok.svg?v=4" alt="TikTok" width={48} height={48} className="w-12 h-12" loading="lazy" />;
           case 'onlyfans':
-              return <img src="https://m.pubcastplus.com/images/social/onlyfans.svg" alt="OnlyFans" width={48} height={48} className="w-12 h-12" />;
+              return <img src="https://m.pubcastplus.com/images/social/onlyfans.svg" alt="OnlyFans" width={48} height={48} className="w-12 h-12" loading="lazy" />;
           case 'guest': 
               return <MessageSquare className="w-12 h-12 text-white" />;
           default: 
@@ -200,7 +200,7 @@ export default function ScreenPage() {
               {/* Platform Icon & User */}
               <div className="flex flex-col items-center justify-center pt-12 pb-6 z-10">
                   <div className="w-20 h-20 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg mb-4">
-                      {getIcon(currentItem.platform)}
+                      {isMounted && getIcon(currentItem.platform)}
                   </div>
                   <h2 className="text-4xl font-bold drop-shadow-sm text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
                       {currentItem.user ? (typeof currentItem.user === 'string' ? currentItem.user.replace(/\d+\s*(วินาที|second|seconds)/gi, '').trim() : currentItem.user) : ''}
