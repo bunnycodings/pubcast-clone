@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { Instagram, Music, MessageSquare } from "lucide-react"; 
 import { providerInfo } from "../data";
@@ -23,8 +23,47 @@ export default function ScreenPage() {
   const [currentItem, setCurrentItem] = useState<any>(DEFAULT_QUEUE[0]);
   const [show, setShow] = useState(true);
   
-  // Use a ref to track the queue to avoid stale closures in setInterval
+  // Use a ref to track the queue and processing state to avoid stale closures
   const queueRef = useRef<any[]>([]);
+  const isProcessingRef = useRef<boolean>(false);
+  const displayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Display Logic - using useCallback to avoid stale closures
+  const processNextItem = useCallback(async () => {
+    if (queueRef.current.length === 0 || isProcessingRef.current) {
+      return;
+    }
+
+    isProcessingRef.current = true;
+    
+    // Fade out
+    setShow(false);
+    
+    await new Promise(resolve => setTimeout(resolve, 500)); // Wait for fade out
+
+    // Get next item (FIFO)
+    const next = queueRef.current[0];
+    const rest = queueRef.current.slice(1);
+    queueRef.current = rest;
+    
+    setQueue(rest);
+
+    if (next) {
+        setCurrentItem(next);
+        
+        // Fade in
+        setShow(true);
+
+        // Wait for duration (use item.duration or default to 10s)
+        const duration = next.duration || 10000;
+        displayTimeoutRef.current = setTimeout(() => {
+            isProcessingRef.current = false;
+            processNextItem(); // Process next item immediately
+        }, duration);
+    } else {
+        isProcessingRef.current = false;
+    }
+  }, []);
   
   // Listen for Broadcast Channel messages
   useEffect(() => {
@@ -38,48 +77,28 @@ export default function ScreenPage() {
         setQueue(prev => {
             const newQueue = [...prev, newItem];
             queueRef.current = newQueue;
+            
+            // If not currently processing, start processing immediately
+            if (!isProcessingRef.current) {
+                // Clear any existing timeout
+                if (displayTimeoutRef.current) {
+                    clearTimeout(displayTimeoutRef.current);
+                }
+                // Start processing immediately
+                processNextItem();
+            }
+            
             return newQueue;
         });
     };
 
     return () => {
         channel.close();
-    };
-  }, []);
-
-  // Display Logic
-  useEffect(() => {
-    const displayLoop = async () => {
-        if (queueRef.current.length > 0) {
-            // Fade out
-            setShow(false);
-            
-            await new Promise(resolve => setTimeout(resolve, 500)); // Wait for fade out
-
-            // Get next item (FIFO)
-            setQueue(prev => {
-                const [next, ...rest] = prev;
-                setCurrentItem(next);
-                queueRef.current = rest;
-                return rest;
-            });
-
-            // Fade in
-            setShow(true);
-
-            // Wait for duration (mocked as 10s for now, or use item.duration)
-            setTimeout(displayLoop, 10000);
-        } else {
-            // Check again soon if queue is empty
-             setTimeout(displayLoop, 1000);
+        if (displayTimeoutRef.current) {
+            clearTimeout(displayTimeoutRef.current);
         }
     };
-
-    // Start the loop
-    const timeoutId = setTimeout(displayLoop, 1000);
-
-    return () => clearTimeout(timeoutId);
-  }, []); // Run once on mount, the loop manages itself
+  }, [processNextItem]);
 
   // Determine Icon based on platform
   const getIcon = (platform: string) => {
@@ -137,14 +156,22 @@ export default function ScreenPage() {
                 <div className="w-20 h-20 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg mb-4">
                     {getIcon(currentItem.platform)}
                 </div>
-                <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 drop-shadow-sm">
+                <h2 className={`text-4xl font-bold drop-shadow-sm ${
+                    currentItem.platform === "system" 
+                        ? "text-black" 
+                        : "text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600"
+                }`}>
                     {currentItem.user}
                 </h2>
             </div>
 
             {/* Message Area */}
             <div className="flex-1 px-8 flex items-center justify-center z-10 overflow-hidden">
-                <p className="text-4xl md:text-5xl font-bold text-white text-center leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] break-words w-full max-h-full overflow-y-auto">
+                <p className={`text-4xl md:text-5xl font-bold text-center leading-tight break-words w-full max-h-full overflow-y-auto ${
+                    currentItem.platform === "system" 
+                        ? "text-black" 
+                        : "text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]"
+                }`}>
                     {currentItem.message}
                 </p>
             </div>
