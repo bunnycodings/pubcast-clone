@@ -1,15 +1,21 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Image as ImageIcon, Send, X, Upload, AlertTriangle, Instagram, Facebook, Music2, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
-import { providerInfo, services, captionCategories } from "../data";
+import { providerInfo, captionCategories } from "../data";
 import Image from "next/image";
+import PromptPayPaymentModal from "@/components/PromptPayPaymentModal";
+import LoginModal from "@/components/LoginModal";
+import { useAuth } from "@/contexts/AuthContext";
 
-export default function PostPage() {
+function PostPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, loading, login } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
+  const [selectedService, setSelectedService] = useState<string>("image");
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string>("instagram");
@@ -19,16 +25,66 @@ export default function PostPage() {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showTextWithImage, setShowTextWithImage] = useState(true);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showAuthRequiredPopup, setShowAuthRequiredPopup] = useState(false);
+  const [services, setServices] = useState<any[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+
+  // Don't automatically show auth popup on mount - only show when user tries to do something
+
+  // Fetch services from API
+  useEffect(() => {
+    fetch("/api/settings")
+      .then(res => res.json())
+      .then(data => {
+        if (data.services && Array.isArray(data.services) && data.services.length > 0) {
+          setServices(data.services);
+        }
+        setServicesLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch services:", err);
+        setServicesLoading(false);
+      });
+  }, []);
+
+  // Get service from URL parameter
+  useEffect(() => {
+    const serviceParam = searchParams.get("service");
+    if (serviceParam) {
+      setSelectedService(serviceParam);
+    }
+  }, [searchParams]);
+
+  // Reset payment state when component mounts or step changes
+  useEffect(() => {
+    if (currentStep !== 3) {
+      setShowPaymentModal(false);
+      setPaymentCompleted(false);
+    }
+  }, [currentStep]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageService = services.find(s => s.id === "image");
+  const currentService = services.find(s => s.id === selectedService);
+  const isMessageService = selectedService === "message";
+
+  if (servicesLoading) {
+    return (
+      <main className="min-h-screen bg-[#0a0a0a] text-white font-sans overflow-x-hidden flex justify-center">
+        <div className="w-full max-w-[480px] min-h-screen bg-[#0f0f12] shadow-2xl relative flex flex-col border-x border-white/5 items-center justify-center">
+          <p className="text-gray-400">กำลังโหลด...</p>
+        </div>
+      </main>
+    );
+  }
 
   const platforms = [
     { id: "instagram", name: "Instagram", icon: Instagram, gradient: "from-purple-600 via-pink-500 to-orange-500" },
     { id: "facebook", name: "Facebook", icon: Facebook, gradient: "from-blue-600 to-blue-700" },
     { id: "twitter", name: "X", icon: MessageSquare, gradient: "from-gray-800 to-gray-900" },
     { id: "tiktok", name: "TikTok", icon: Music2, gradient: "from-gray-800 to-gray-900" },
-    { id: "guest", name: "Guest", icon: MessageSquare, gradient: "from-gray-600 to-gray-700" },
   ];
 
   const handleImageClick = () => {
@@ -54,6 +110,12 @@ export default function PostPage() {
   };
 
   const handleSelectVariant = (variant: any) => {
+    // Check if user is logged in
+    if (!loading && !user) {
+      setShowAuthRequiredPopup(true);
+      return;
+    }
+    // If still loading, allow the action (user might be logged in)
     setSelectedVariant(variant);
     setCurrentStep(2);
   };
@@ -65,13 +127,32 @@ export default function PostPage() {
 
   const handleNext = () => {
     if (currentStep === 2) {
-      if (!selectedImage) {
-        alert("กรุณาอัพโหลดรูปภาพ");
+      // Check if user is logged in
+      if (!loading && !user) {
+        setShowAuthRequiredPopup(true);
         return;
       }
-      if (!username.trim()) {
-        alert("กรุณาใส่ชื่อวาร์ปของคุณ");
-        return;
+      
+      // For message service, only require message and username
+      if (isMessageService) {
+        if (!message.trim()) {
+          alert("กรุณาใส่ข้อความ");
+          return;
+        }
+        if (!username.trim()) {
+          alert("กรุณาใส่ชื่อวาร์ปของคุณ");
+          return;
+        }
+      } else {
+        // For image/video service, require image
+        if (!selectedImage) {
+          alert("กรุณาอัพโหลดรูปภาพ");
+          return;
+        }
+        if (!username.trim()) {
+          alert("กรุณาใส่ชื่อวาร์ปของคุณ");
+          return;
+        }
       }
       setCurrentStep(3);
     }
@@ -85,22 +166,57 @@ export default function PostPage() {
 
 
   const handleSend = () => {
-    if (!selectedImage || !selectedVariant) return;
+    if (!selectedVariant) return;
+    
+    // Check if user is logged in
+    if (!loading && !user) {
+      setShowAuthRequiredPopup(true);
+      return;
+    }
+    
+    // For message service, check message instead of image
+    if (isMessageService) {
+      if (!message.trim()) return;
+    } else {
+      if (!selectedImage) return;
+    }
+    
+    // Show PromptPay payment modal directly
+    setShowPaymentModal(true);
+  };
+
+  const handleLoginSuccess = (userData: { id: string; username: string; phoneNumber: string }) => {
+    login(userData);
+    setShowLoginModal(false);
+    setShowAuthRequiredPopup(false);
+  };
+
+  const handlePaymentComplete = async () => {
+    if (!selectedVariant) return;
+    
+    // For message service, check message instead of image
+    if (isMessageService) {
+      if (!message.trim()) return;
+    } else {
+      if (!selectedImage) return;
+    }
 
     const payload = {
       id: Date.now(),
-      type: "image",
+      type: isMessageService ? "message" : "image",
       user: username || "Guest User",
       platform: selectedPlatform,
-      message: showTextWithImage && message ? message : "",
-      mediaUrl: selectedImage,
-      showText: showTextWithImage,
+      message: isMessageService ? message : (showTextWithImage && message ? message : ""),
+      mediaUrl: selectedImage || null,
+      showText: isMessageService ? true : showTextWithImage,
       duration: selectedVariant.duration * 1000
     };
 
     const channel = new BroadcastChannel('pubcast_channel');
     channel.postMessage(payload);
     channel.close();
+    
+    // LINE notification is now handled in PromptPayPaymentModal before payment completion
     
     // Reset form and redirect
     setMessage("");
@@ -110,6 +226,8 @@ export default function PostPage() {
     setUsername("");
     setCurrentStep(1);
     setSelectedVariant(null);
+    setShowPaymentModal(false);
+    setPaymentCompleted(false);
     
     // Redirect immediately
     router.push("/");
@@ -247,26 +365,30 @@ export default function PostPage() {
             <>
               <h2 className="text-xl font-bold mb-4">ระบุตัวเลือก</h2>
               <div className="grid grid-cols-2 gap-4">
-                {imageService?.variants.map((variant) => (
+                {currentService?.variants.map((variant) => (
                   <button
                     key={variant.id}
                     onClick={() => handleSelectVariant(variant)}
                     className="bg-gradient-to-br from-orange-900/50 to-purple-900/50 border border-purple-500/30 rounded-2xl p-4 flex flex-col items-center gap-3 hover:scale-105 transition-transform"
                   >
-                    <img 
-                      src="https://resize-img.pubcastplus.com/protected/default-gift/0_1690315866217.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" 
-                      alt="Icon" 
-                      width={32} 
-                      height={32} 
-                      className="w-8 h-8"
-                    />
+                    {currentService.thumbnail ? (
+                      <img 
+                        src={currentService.thumbnail} 
+                        alt="Icon" 
+                        width={32} 
+                        height={32} 
+                        className="w-8 h-8"
+                      />
+                    ) : (
+                      <MessageSquare className="w-8 h-8 text-white" />
+                    )}
                     <div className="text-center">
                       <p className="font-bold text-lg">{variant.name}</p>
                       <p className="text-sm text-white/70">{variant.price} บาท</p>
                     </div>
-                    <button className="w-full bg-white text-gray-900 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors">
+                    <div className="w-full bg-white text-gray-900 py-2 rounded-lg font-medium text-center">
                       เลือก
-                    </button>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -276,58 +398,62 @@ export default function PostPage() {
           {/* Step 2: Upload & Details */}
           {currentStep === 2 && (
             <>
-              {/* Warning Text */}
-              <div className="mb-4 text-xs text-gray-400 space-y-1">
-                <p>
-                  ห้ามโพสต์เนื้อหาโฆษณา หากต้องการลงโฆษณาติดต่อ{" "}
-                  <button className="text-purple-400 hover:underline">PubCast Ads</button>
-                </p>
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  <button 
-                    onClick={() => setShowWarningModal(true)}
-                    className="text-yellow-400 hover:underline"
-                  >
-                    ข้อจำกัดรูปภาพ
-                  </button>
-                </div>
-              </div>
-
-              {/* Image Upload */}
-              <div className="mb-6">
-                {selectedImage ? (
-                  <div className="relative w-full h-64 rounded-xl overflow-hidden border border-white/10">
-                    <Image 
-                      src={selectedImage} 
-                      alt="Preview" 
-                      fill 
-                      className="object-cover" 
-                      unoptimized
-                    />
+              {/* Warning Text - Only show for image service */}
+              {!isMessageService && (
+                <div className="mb-4 text-xs text-gray-400 space-y-1">
+                  <p>
+                    ห้ามโพสต์เนื้อหาโฆษณา หากต้องการลงโฆษณาติดต่อ{" "}
+                    <button className="text-purple-400 hover:underline">PubCast Ads</button>
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
                     <button 
-                      onClick={handleRemoveImage}
-                      className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white p-2 rounded-full hover:bg-red-500 transition-all"
+                      onClick={() => setShowWarningModal(true)}
+                      className="text-yellow-400 hover:underline"
                     >
-                      <X className="w-4 h-4" />
+                      ข้อจำกัดรูปภาพ
                     </button>
                   </div>
-                ) : (
-                  <div 
-                    onClick={handleImageClick}
-                    className="w-full h-64 border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-purple-500/50 transition-colors bg-white/5"
-                  >
-                    <Upload className="w-12 h-12 text-white/50" />
-                    <p className="text-white/70">กดที่นี่ เพื่ออัพโหลดรูปภาพ</p>
-                  </div>
-                )}
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  accept="image/*" 
-                  className="hidden" 
-                />
-              </div>
+                </div>
+              )}
+
+              {/* Image Upload - Only show for image/video service */}
+              {!isMessageService && (
+                <div className="mb-6">
+                  {selectedImage ? (
+                    <div className="relative w-full h-64 rounded-xl overflow-hidden border border-white/10">
+                      <Image 
+                        src={selectedImage} 
+                        alt="Preview" 
+                        fill 
+                        className="object-cover" 
+                        unoptimized
+                      />
+                      <button 
+                        onClick={handleRemoveImage}
+                        className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white p-2 rounded-full hover:bg-red-500 transition-all"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={handleImageClick}
+                      className="w-full h-64 border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-purple-500/50 transition-colors bg-white/5"
+                    >
+                      <Upload className="w-12 h-12 text-white/50" />
+                      <p className="text-white/70">กดที่นี่ เพื่ออัพโหลดรูปภาพ</p>
+                    </div>
+                  )}
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange} 
+                    accept="image/*" 
+                    className="hidden" 
+                  />
+                </div>
+              )}
 
               {/* Social Media Selection */}
               <div className="mb-6">
@@ -344,10 +470,8 @@ export default function PostPage() {
                           return <img src="https://m.pubcastplus.com/images/social/twitter.png" alt="Twitter" width={24} height={24} className="w-6 h-6" loading="lazy" />;
                         case 'tiktok':
                           return <img src="https://m.pubcastplus.com/images/social/tiktok.svg?v=4" alt="TikTok" width={24} height={24} className="w-6 h-6" loading="lazy" />;
-                        case 'guest':
-                          return <img src="https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" alt="Guest" width={24} height={24} className="w-6 h-6" />;
                         default:
-                          return <img src="https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" alt="Default" width={24} height={24} className="w-6 h-6" />;
+                          return null;
                       }
                     };
                     
@@ -377,14 +501,17 @@ export default function PostPage() {
 
               {/* Message Selection */}
               <div className="mb-6">
-                <h3 className="text-lg font-bold mb-3">เลือกข้อความ</h3>
+                <h3 className="text-lg font-bold mb-3">
+                  {isMessageService ? "ข้อความที่ต้องการส่ง" : "เลือกข้อความ"}
+                </h3>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="เลือกข้อความ"
+                    placeholder={isMessageService ? "พิมพ์ข้อความที่ต้องการส่งขึ้นจอ" : "เลือกข้อความ"}
                     className="flex-1 bg-[#1a1a20] border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    required={isMessageService}
                   />
                   <button
                     onClick={() => setShowMessageModal(true)}
@@ -393,10 +520,15 @@ export default function PostPage() {
                     เลือก
                   </button>
                 </div>
+                {isMessageService && (
+                  <p className="mt-2 text-xs text-gray-400">
+                    คุณสามารถพิมพ์ข้อความเองหรือเลือกจากรายการ
+                  </p>
+                )}
               </div>
 
-              {/* Show Text with Image Option */}
-              {selectedImage && (
+              {/* Show Text with Image Option - Only for image service */}
+              {!isMessageService && selectedImage && (
                 <div className="mb-6 flex items-center gap-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -423,7 +555,7 @@ export default function PostPage() {
                   <p className="font-bold">{selectedVariant?.name} - {selectedVariant?.price} บาท</p>
                 </div>
                 
-                {selectedImage && (
+                {!isMessageService && selectedImage && (
                   <div>
                     <p className="text-sm text-gray-400 mb-2">รูปภาพ</p>
                     <div className="relative w-full h-48 rounded-lg overflow-hidden">
@@ -444,6 +576,23 @@ export default function PostPage() {
                   </div>
                 )}
               </div>
+
+              {/* Payment Status */}
+              {paymentCompleted && (
+                <div className="bg-green-500/20 border border-green-500/50 rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-bold text-green-400">ชำระเงินสำเร็จแล้ว</p>
+                      <p className="text-sm text-gray-300">ระบบกำลังดำเนินการส่งรูปขึ้นจอ...</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -479,7 +628,87 @@ export default function PostPage() {
           </div>
         )}
 
+        {/* PromptPay Payment Modal */}
+        {selectedVariant && (
+          <PromptPayPaymentModal
+            isOpen={showPaymentModal}
+            onClose={() => {
+              setShowPaymentModal(false);
+            }}
+            amount={selectedVariant.price}
+            username={username}
+            serviceType={isMessageService ? "message" : "image"}
+            onPaymentComplete={() => {
+              setPaymentCompleted(true);
+              handlePaymentComplete();
+            }}
+          />
+        )}
+
+        {/* Authentication Required Popup */}
+        {showAuthRequiredPopup && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <div className="bg-[#1a1a2e] rounded-2xl max-w-sm w-full border border-purple-500/30 p-6">
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 mx-auto bg-yellow-500/20 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-8 h-8 text-yellow-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    ต้องเข้าสู่ระบบ
+                  </h3>
+                  <p className="text-gray-300 text-sm">
+                    กรุณาเข้าสู่ระบบหรือสมัครสมาชิก
+                    <br />
+                    เพื่อใช้งานบริการ
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowAuthRequiredPopup(false)}
+                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-xl transition-colors"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAuthRequiredPopup(false);
+                      setShowLoginModal(true);
+                    }}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-2 px-4 rounded-xl hover:brightness-110 transition-all"
+                  >
+                    เข้าสู่ระบบ
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Login Modal */}
+        <LoginModal
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+          onSuccess={handleLoginSuccess}
+        />
+
       </div>
     </main>
+  );
+}
+
+export default function PostPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-[#0a0a0a] text-white font-sans overflow-x-hidden flex justify-center">
+        <div className="w-full max-w-[480px] min-h-screen bg-[#0f0f12] shadow-2xl relative flex flex-col border-x border-white/5 items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-400">กำลังโหลด...</p>
+          </div>
+        </div>
+      </main>
+    }>
+      <PostPageContent />
+    </Suspense>
   );
 }

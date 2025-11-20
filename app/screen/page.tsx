@@ -149,8 +149,6 @@ export default function ScreenPage() {
               return <img src="https://m.pubcastplus.com/images/social/twitter.png" alt="Twitter" width={48} height={48} className="w-12 h-12" loading="lazy" onError={(e) => { console.error("Failed to load Twitter icon"); e.currentTarget.src = "https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z"; }} />;
           case 'tiktok': 
               return <img src="https://m.pubcastplus.com/images/social/tiktok.svg?v=4" alt="TikTok" width={48} height={48} className="w-12 h-12" loading="lazy" onError={(e) => { console.error("Failed to load TikTok icon"); e.currentTarget.src = "https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z"; }} />;
-          case 'onlyfans':
-              return <img src="https://m.pubcastplus.com/images/social/onlyfans.svg" alt="OnlyFans" width={48} height={48} className="w-12 h-12" loading="lazy" onError={(e) => { console.error("Failed to load OnlyFans icon"); e.currentTarget.src = "https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z"; }} />;
           case 'guest': 
               return <img src="https://resize-img.pubcastplus.com/protected/default-gift/chat.gif?width=200&height=200&ts=2025-11-17T13:56:18.264Z" alt="Guest" width={48} height={48} className="w-12 h-12" />;
           default: 

@@ -1,17 +1,57 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { providerInfo, services } from "./data";
+import { providerInfo } from "./data";
 import {  Home, Flame, Plus, MessageCircle, User, Clock, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import LoginModal from "@/components/LoginModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
 export default function MainPage() {
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const { user, login } = useAuth();
+  const [promoText, setPromoText] = useState("");
+  const [promoSubtext, setPromoSubtext] = useState("");
+  const [services, setServices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch settings (services and promo text) from API
+  useEffect(() => {
+    fetch("/api/settings")
+      .then(res => res.json())
+      .then(data => {
+        if (data.promoText) setPromoText(data.promoText);
+        if (data.promoSubtext) setPromoSubtext(data.promoSubtext);
+        if (data.services && Array.isArray(data.services) && data.services.length > 0) {
+          setServices(data.services);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch settings:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  const handleLoginSuccess = (userData: { id: string; username: string; phoneNumber: string }) => {
+    login(userData);
+    setShowLoginModal(false);
+  };
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#0a0a0a] text-white font-sans flex items-center justify-center">
+        <p className="text-gray-400">กำลังโหลด...</p>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white pb-24 font-sans overflow-x-hidden flex justify-center">
@@ -30,9 +70,18 @@ export default function MainPage() {
                  <span className="text-[10px] font-medium tracking-wider text-green-400 uppercase">Live Now</span>
             </div>
             <div className="flex gap-3 items-center">
-                <button className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white text-xs font-bold px-4 py-1.5 rounded-full transition-all">
+                {user ? (
+                  <Link href="/profile" className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white text-xs font-bold px-4 py-1.5 rounded-full transition-all">
+                    {user.username}
+                  </Link>
+                ) : (
+                  <button 
+                    onClick={() => setShowLoginModal(true)}
+                    className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white text-xs font-bold px-4 py-1.5 rounded-full transition-all"
+                  >
                     เข้าสู่ระบบ
-                </button>
+                  </button>
+                )}
                 <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-white/20 shadow-sm">
                     <div className="h-full w-full flex flex-col">
                         <div className="h-[16%] bg-[#A51931]"></div>
@@ -86,8 +135,8 @@ export default function MainPage() {
                     <div className="flex items-center gap-2 mb-1">
                         <span className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-bold text-white border border-white/20">PROMO</span>
                     </div>
-                    <h2 className="text-xl font-bold text-white drop-shadow-lg">ส่งรูปขึ้นจอ ฟรี!</h2>
-                    <p className="text-xs text-white/90 font-medium">18:00 - 22:00 น. เท่านั้น</p>
+                    <h2 className="text-xl font-bold text-white drop-shadow-lg">{promoText}</h2>
+                    <p className="text-xs text-white/90 font-medium">{promoSubtext}</p>
                 </div>
                 
                 <div className="relative">
@@ -110,8 +159,14 @@ export default function MainPage() {
         {/* Services Grid */}
         <div className="grid grid-cols-2 gap-3">
           {services.map((service, idx) => (
-            <Link
-              href={`/post?service=${service.id}`}
+            <button
+              onClick={() => {
+                if (!user) {
+                  setShowLoginModal(true);
+                } else {
+                  window.location.href = `/post?service=${service.id}`;
+                }
+              }}
               key={service.id}
               className={cn(
                 "group relative h-32 rounded-2xl p-4 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border border-white/5",
@@ -162,7 +217,7 @@ export default function MainPage() {
                         <div className="h-0.5 w-8 bg-white/20 mx-auto mt-2 rounded-full group-hover:w-16 group-hover:bg-white/50 transition-all duration-300"></div>
                     </div>
                 </div>
-            </Link>
+            </button>
           ))}
         </div>
       </div>
@@ -194,6 +249,13 @@ export default function MainPage() {
       </div>
 
       </div>
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSuccess={handleLoginSuccess}
+      />
     </main>
   );
 }
