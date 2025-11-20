@@ -45,8 +45,13 @@ npm install
 # PromptPay Configuration (REQUIRED)
 PROMPTPAY_ID=0812345678
 
-# LINE Notify Configuration (OPTIONAL)
-LINE_NOTIFY_TOKEN=your_line_notify_token_here
+# LINE Messaging API Configuration (OPTIONAL)
+LINE_CHANNEL_SECRET=your_channel_secret_here
+# Optional - only needed if you want to send push messages:
+# LINE_CHANNEL_ACCESS_TOKEN=your_channel_access_token_here
+# LINE_USER_ID=your_line_user_id_here
+# OR use LINE_GROUP_ID instead:
+# LINE_GROUP_ID=your_line_group_id_here
 
 # MySQL Database Configuration (OPTIONAL - for user registration)
 # DB_HOST=localhost
@@ -60,7 +65,9 @@ LINE_NOTIFY_TOKEN=your_line_notify_token_here
 - `PROMPTPAY_ID`: Your PromptPay ID (10-digit phone starting with 0, or 13-digit Citizen ID)
 
 **Optional Variables:**
-- `LINE_NOTIFY_TOKEN`: Get from [LINE Notify](https://notify-bot.line.me/) → My page → Generate token
+- `LINE_CHANNEL_SECRET`: Get from [LINE Developers Console](https://developers.line.biz/console/) → Your channel → Basic settings → Channel secret (required for LINE configuration)
+- `LINE_CHANNEL_ACCESS_TOKEN`: Get from [LINE Developers Console](https://developers.line.biz/console/) → Your channel → Messaging API → Channel access token → Issue (optional - only needed to send push messages)
+- `LINE_USER_ID` or `LINE_GROUP_ID`: LINE User ID or Group ID to send notifications to (optional - only needed if using access token to send messages)
 - `DB_*`: MySQL database credentials (only needed if using database for user registration)
 
 📖 **For detailed setup instructions, see [ENV_SETUP.md](./ENV_SETUP.md)**
