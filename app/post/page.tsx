@@ -365,7 +365,7 @@ function PostPageContent() {
             <>
               <h2 className="text-xl font-bold mb-4">ระบุตัวเลือก</h2>
               <div className="grid grid-cols-2 gap-4">
-                {currentService?.variants.map((variant) => (
+                {currentService?.variants.map((variant: any) => (
                   <button
                     key={variant.id}
                     onClick={() => handleSelectVariant(variant)}
